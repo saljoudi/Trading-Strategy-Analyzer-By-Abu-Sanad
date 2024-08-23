@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
-
-
 import dash
 from dash import dcc, html, Input, Output
 import dash_bootstrap_components as dbc
@@ -18,6 +15,7 @@ warnings.filterwarnings("ignore")
 # Initialize the Dash app with a Bootstrap theme for a professional look
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
 server = app.server
+
 app.layout = dbc.Container([
     dbc.Row([
         dbc.Col(html.H1("Trading Strategy Analyzer", className="text-center"), className="mb-4 mt-4")
@@ -63,13 +61,24 @@ app.layout = dbc.Container([
                 ])
             ])
         ], width=12)
+    ]),
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H4("Trades Details", className="card-title"),
+                    dbc.Table(id='trades-table', bordered=True, hover=True, responsive=True, striped=True)
+                ])
+            ])
+        ], width=12)
     ])
 ], fluid=True)
 
 
 @app.callback(
     [Output('trading-graph', 'figure'),
-     Output('summary-output', 'children')],
+     Output('summary-output', 'children'),
+     Output('trades-table', 'children')],
     [Input('analyze-button', 'n_clicks')],
     [Input('ticker-input', 'value'),
      Input('period-input', 'value'),
@@ -123,13 +132,12 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
             days_held = (index - trade_start).days
 
             trades.append({
-                'Sell Date': index,
-                'Buy Price': buy_price,
-                'Sell Price': sell_price,
+                'Sell Date': index.strftime('%Y-%m-%d'),
+                'Buy Price': f"{buy_price:,.2f} SAR",
+                'Sell Price': f"{sell_price:,.2f} SAR",
                 'Days Held': days_held,
-                'Original Investment': portfolio - profit,
-                'Profit': profit,
-                'Profit Percentage': (profit / (portfolio - profit)) * 100
+                'Profit': f"{profit:,.2f} SAR",
+                'Profit Percentage': f"{(profit / (portfolio - profit)) * 100:.2f}%"
             })
 
             buy_price = None  # Reset after trade
@@ -166,16 +174,12 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         f"Average Days Held per Trade: {sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0:.2f} days"
     )
 
-    return fig, summary_text
+    # Prepare the trades table
+    trades_table_header = [html.Thead(html.Tr([html.Th(col) for col in trades[0].keys()]))]
+    trades_table_body = [html.Tbody([html.Tr([html.Td(trade[col]) for col in trade.keys()]) for trade in trades])]
+
+    return fig, summary_text, trades_table_header + trades_table_body
 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-# Best Parameters: SMA Short = 11, SMA Long = 10, RSI Threshold = 45, ADL Short = 11, ADL Long = 10
-
-
-# In[ ]:
-
-
-
-
