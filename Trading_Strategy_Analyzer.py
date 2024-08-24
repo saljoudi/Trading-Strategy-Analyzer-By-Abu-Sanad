@@ -22,7 +22,18 @@ app.layout = dbc.Container([
                     dbc.Label("Ticker Symbol (without .SR for Saudi stocks):"),
                     dcc.Input(id='ticker-input', type='text', value='1303', className="mb-3", style={'width': '100%'}),
                     dbc.Label("Period:"),
-                    dcc.Input(id='period-input', type='text', value='1y', className="mb-3", style={'width': '100%'}),
+                    dcc.Dropdown(
+                        id='period-input',
+                        options=[
+                            {'label': '1 Year', 'value': '1y'},
+                            {'label': '2 Year', 'value': '2y'},
+                            {'label': '3 Year', 'value': '3y'},
+                            {'label': 'All', 'value': 'max'}
+                        ],
+                        value='1y',
+                        className="mb-3",
+                        style={'width': '100%'}
+                    ),
                     dbc.Label("Short SMA Period:"),
                     dcc.Input(id='sma-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long SMA Period:"),
