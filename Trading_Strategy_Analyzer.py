@@ -23,6 +23,16 @@ app.layout = dbc.Container([
                     dcc.Input(id='ticker-input', type='text', value='1303', className="mb-3", style={'width': '100%'}),
                     dbc.Label("Period:"),
                     dcc.Input(id='period-input', type='text', value='1y', className="mb-3", style={'width': '100%'}),
+                    dbc.Label("Short SMA Period:"),
+                    dcc.Input(id='sma-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
+                    dbc.Label("Long SMA Period:"),
+                    dcc.Input(id='sma-long-input', type='number', value=10, className="mb-3", style={'width': '100%'}),
+                    dbc.Label("RSI Threshold:"),
+                    dcc.Input(id='rsi-threshold-input', type='number', value=45, className="mb-3", style={'width': '100%'}),
+                    dbc.Label("Short ADL SMA Period:"),
+                    dcc.Input(id='adl-short-input', type='number', value=7, className="mb-3", style={'width': '100%'}),
+                    dbc.Label("Long ADL SMA Period:"),
+                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -65,9 +75,14 @@ app.layout = dbc.Container([
      Output('trades-table', 'children')],
     [Input('analyze-button', 'n_clicks')],
     [Input('ticker-input', 'value'),
-     Input('period-input', 'value')]
+     Input('period-input', 'value'),
+     Input('sma-short-input', 'value'),
+     Input('sma-long-input', 'value'),
+     Input('rsi-threshold-input', 'value'),
+     Input('adl-short-input', 'value'),
+     Input('adl-long-input', 'value')]
 )
-def update_graph(n_clicks, ticker_input, period):
+def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_threshold, adl_short, adl_long):
     # Check if the ticker is numeric (Saudi stock symbol)
     if ticker_input.isdigit():
         ticker = f"{ticker_input}.SR"
@@ -76,11 +91,6 @@ def update_graph(n_clicks, ticker_input, period):
 
     # Download the data for the ticker
     df = yf.download(ticker, period=period)
-
-    # Define the best parameters (these would normally be found via optimization)
-    sma_short, sma_long = 17, 10
-    rsi_threshold = 45
-    adl_short, adl_long = 7, 15
 
     # Calculate the indicators based on the parameters provided
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
