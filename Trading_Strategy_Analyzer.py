@@ -23,16 +23,6 @@ app.layout = dbc.Container([
                     dcc.Input(id='ticker-input', type='text', value='1303', className="mb-3", style={'width': '100%'}),
                     dbc.Label("Period:"),
                     dcc.Input(id='period-input', type='text', value='1y', className="mb-3", style={'width': '100%'}),
-                    dbc.Label("Short SMA Period:"),
-                    dcc.Input(id='sma-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
-                    dbc.Label("Long SMA Period:"),
-                    dcc.Input(id='sma-long-input', type='number', value=10, className="mb-3", style={'width': '100%'}),
-                    dbc.Label("RSI Threshold:"),
-                    dcc.Input(id='rsi-threshold-input', type='number', value=45, className="mb-3", style={'width': '100%'}),
-                    dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=7, className="mb-3", style={'width': '100%'}),
-                    dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -55,23 +45,29 @@ app.layout = dbc.Container([
                 ])
             ])
         ], width=12)
+    ]),
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H4("Trades Details", className="card-title"),
+                    html.Div(id='trades-table')
+                ])
+            ])
+        ], width=12)
     ])
 ], fluid=True)
 
 
 @app.callback(
     [Output('trading-graph', 'figure'),
-     Output('summary-output', 'children')],
+     Output('summary-output', 'children'),
+     Output('trades-table', 'children')],
     [Input('analyze-button', 'n_clicks')],
     [Input('ticker-input', 'value'),
-     Input('period-input', 'value'),
-     Input('sma-short-input', 'value'),
-     Input('sma-long-input', 'value'),
-     Input('rsi-threshold-input', 'value'),
-     Input('adl-short-input', 'value'),
-     Input('adl-long-input', 'value')]
+     Input('period-input', 'value')]
 )
-def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_threshold, adl_short, adl_long):
+def update_graph(n_clicks, ticker_input, period):
     # Check if the ticker is numeric (Saudi stock symbol)
     if ticker_input.isdigit():
         ticker = f"{ticker_input}.SR"
@@ -80,6 +76,11 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
 
     # Download the data for the ticker
     df = yf.download(ticker, period=period)
+
+    # Define the best parameters (these would normally be found via optimization)
+    sma_short, sma_long = 17, 10
+    rsi_threshold = 45
+    adl_short, adl_long = 7, 15
 
     # Calculate the indicators based on the parameters provided
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
@@ -119,13 +120,12 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
             days_held = (index - trade_start).days
 
             trades.append({
-                'Sell Date': index,
-                'Buy Price': buy_price,
-                'Sell Price': sell_price,
+                'Sell Date': index.date().strftime('%Y-%m-%d'),  # Format the date as 'YYYY-MM-DD'
+                'Buy Price': f"{buy_price:.2f} SAR",
+                'Sell Price': f"{sell_price:.2f} SAR",
                 'Days Held': days_held,
-                'Original Investment': portfolio - profit,
-                'Profit': profit,
-                'Profit Percentage': (profit / (portfolio - profit)) * 100
+                'Profit': f"{profit:,.2f} SAR",
+                'Profit Percentage': f"{(profit / (portfolio - profit)) * 100:.2f}%"
             })
 
             buy_price = None  # Reset after trade
@@ -162,7 +162,11 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         f"Average Days Held per Trade: {sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0:.2f} days"
     )
 
-    return fig, summary_text
+    # Create the trades table
+    trades_df = pd.DataFrame(trades)
+    trades_table = dbc.Table.from_dataframe(trades_df, striped=True, bordered=True, hover=True)
+
+    return fig, summary_text, trades_table
 
 
 if __name__ == '__main__':
