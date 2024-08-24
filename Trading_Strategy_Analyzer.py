@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import dash
 from dash import dcc, html, Input, Output
 import dash_bootstrap_components as dbc
@@ -8,13 +5,9 @@ import pandas as pd
 import yfinance as yf
 import ta
 import plotly.graph_objs as go
-import warnings
-warnings.filterwarnings("ignore")
-
 
 # Initialize the Dash app with a Bootstrap theme for a professional look
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
-server = app.server
 
 app.layout = dbc.Container([
     dbc.Row([
@@ -25,7 +18,7 @@ app.layout = dbc.Container([
             dbc.Card([
                 dbc.CardBody([
                     html.H4("Input Parameters", className="card-title"),
-                    dbc.Label("Ticker Symbol (without .SR):"),
+                    dbc.Label("Ticker Symbol (without .SR for Saudi stocks):"),
                     dcc.Input(id='ticker-input', type='text', value='1303', className="mb-3", style={'width': '100%'}),
                     dbc.Label("Period:"),
                     dcc.Input(id='period-input', type='text', value='1y', className="mb-3", style={'width': '100%'}),
@@ -61,24 +54,13 @@ app.layout = dbc.Container([
                 ])
             ])
         ], width=12)
-    ]),
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    html.H4("Trades Details", className="card-title"),
-                    dbc.Table(id='trades-table', bordered=True, hover=True, responsive=True, striped=True)
-                ])
-            ])
-        ], width=12)
     ])
 ], fluid=True)
 
 
 @app.callback(
     [Output('trading-graph', 'figure'),
-     Output('summary-output', 'children'),
-     Output('trades-table', 'children')],
+     Output('summary-output', 'children')],
     [Input('analyze-button', 'n_clicks')],
     [Input('ticker-input', 'value'),
      Input('period-input', 'value'),
@@ -89,7 +71,11 @@ app.layout = dbc.Container([
      Input('adl-long-input', 'value')]
 )
 def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_threshold, adl_short, adl_long):
-    ticker = f"{ticker_input}.SR"
+    # Check if the ticker is numeric (Saudi stock symbol)
+    if ticker_input.isdigit():
+        ticker = f"{ticker_input}.SR"
+    else:
+        ticker = ticker_input
 
     # Download the data for the ticker
     df = yf.download(ticker, period=period)
@@ -132,12 +118,13 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
             days_held = (index - trade_start).days
 
             trades.append({
-                'Sell Date': index.strftime('%Y-%m-%d'),
-                'Buy Price': f"{buy_price:,.2f} SAR",
-                'Sell Price': f"{sell_price:,.2f} SAR",
+                'Sell Date': index,
+                'Buy Price': buy_price,
+                'Sell Price': sell_price,
                 'Days Held': days_held,
-                'Profit': f"{profit:,.2f} SAR",
-                'Profit Percentage': f"{(profit / (portfolio - profit)) * 100:.2f}%"
+                'Original Investment': portfolio - profit,
+                'Profit': profit,
+                'Profit Percentage': (profit / (portfolio - profit)) * 100
             })
 
             buy_price = None  # Reset after trade
@@ -174,11 +161,7 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         f"Average Days Held per Trade: {sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0:.2f} days"
     )
 
-    # Prepare the trades table
-    trades_table_header = [html.Thead(html.Tr([html.Th(col) for col in trades[0].keys()]))]
-    trades_table_body = [html.Tbody([html.Tr([html.Td(trade[col]) for col in trade.keys()]) for trade in trades])]
-
-    return fig, summary_text, trades_table_header + trades_table_body
+    return fig, summary_text
 
 
 if __name__ == '__main__':
