@@ -6,13 +6,13 @@ import yfinance as yf
 import ta
 import plotly.graph_objs as go
 
-# Initialize the Dash app with a Bootstrap theme for a professional look
+# Initialize the Dash app with a Bootstrap theme
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
 server = app.server  # Expose the Flask server
 
 app.layout = dbc.Container([
     dbc.Row([
-        dbc.Col(html.H1("Trading Strategy Analyzer", className="text-center"), className="mb-4 mt-4")
+        dbc.Col(html.H1("Advanced Trading Strategy Analyzer", className="text-center text-primary"), className="mb-4 mt-4")
     ]),
     dbc.Row([
         dbc.Col([
@@ -37,13 +37,13 @@ app.layout = dbc.Container([
                     dbc.Label("Short SMA Period:"),
                     dcc.Input(id='sma-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long SMA Period:"),
-                    dcc.Input(id='sma-long-input', type='number', value=10, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='sma-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
                     dbc.Label("RSI Threshold:"),
-                    dcc.Input(id='rsi-threshold-input', type='number', value=45, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=7, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=11, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -61,7 +61,7 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Strategy Summary", className="card-title"),
+                    html.H4("Best Strategy Summary", className="card-title"),
                     html.Pre(id='summary-output', style={'whiteSpace': 'pre-wrap', 'font-family': 'monospace'})
                 ])
             ])
@@ -71,7 +71,7 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.Card([
                 dbc.CardBody([
-                    html.H4("Trades Details", className="card-title"),
+                    html.H4("Best Trades Details", className="card-title"),
                     html.Div(id='trades-table')
                 ])
             ])
@@ -102,8 +102,9 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
 
     # Download the data for the ticker
     df = yf.download(ticker, period=period)
+    df.index = pd.to_datetime(df.index)
 
-    # Calculate the indicators based on the parameters provided
+    # Calculate indicators
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
     df['SMA_Long'] = df['Close'].rolling(window=sma_long).mean()
     df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
@@ -113,16 +114,15 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     df['ADL_Short_SMA'] = df['ADL'].rolling(window=adl_short).mean()
     df['ADL_Long_SMA'] = df['ADL'].rolling(window=adl_long).mean()
 
-    # Signal generation based on the current parameters
-    df['Signal'] = 0  # Default to no signal
+    # Signal generation
     df['Signal'] = df.apply(
-        lambda row: 1 if row['SMA_Short'] > row['SMA_Long'] and row['ADL_Short_SMA'] > row['ADL_Long_SMA'] and row['RSI'] >= rsi_threshold and row['MACD'] > row['MACD_Signal'] else (
-            -1 if row['SMA_Short'] < row['SMA_Long'] and row['ADL_Short_SMA'] < row['ADL_Long_SMA'] and row['RSI'] < rsi_threshold and row['MACD'] <= row['MACD_Signal'] else 0
+        lambda row: -1 if row['Close'] >= row['SMA_Short'] and row['SMA_Short'] > row['SMA_Long'] and row['ADL_Short_SMA'] > row['ADL_Long_SMA'] and row['RSI'] >= rsi_threshold and row['MACD'] > row['MACD_Signal'] else (
+            1 if row['Close'] < row['SMA_Short'] and row['SMA_Short'] < row['SMA_Long'] else 0
         ), axis=1
     )
 
-    # Simulate trading with the generated signals
-    initial_investment = 100000  # Example initial investment
+    # Simulate trading
+    initial_investment = 100000
     portfolio = initial_investment
     trades = []
     buy_price = None
@@ -141,7 +141,7 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
             days_held = (index - trade_start).days
 
             trades.append({
-                'Sell Date': index.date().strftime('%Y-%m-%d'),  # Format the date as 'YYYY-MM-DD'
+                'Sell Date': index.date().strftime('%Y-%m-%d'),
                 'Buy Price': f"{buy_price:.2f} SAR",
                 'Sell Price': f"{sell_price:.2f} SAR",
                 'Days Held': days_held,
@@ -149,26 +149,28 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
                 'Profit Percentage': f"{(profit / (portfolio - profit)) * 100:.2f}%"
             })
 
-            buy_price = None  # Reset after trade
+            buy_price = None
 
     final_value = portfolio
     total_return = final_value - initial_investment
     percentage_return = (total_return / initial_investment) * 100
 
-    # Create the plot
+    # Create the plot with enhanced visuals
     fig = go.Figure()
 
     # Add the Closing Price and SMA lines
-    fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Closing Price'))
-    fig.add_trace(go.Scatter(x=df.index, y=df['SMA_Short'], mode='lines', name=f'SMA Short ({sma_short})'))
-    fig.add_trace(go.Scatter(x=df.index, y=df['SMA_Long'], mode='lines', name=f'SMA Long ({sma_long})'))
+    fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Close Price', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=df.index, y=df['SMA_Short'], mode='lines', name=f'SMA Short ({sma_short})', line=dict(color='orange', dash='dash')))
+    fig.add_trace(go.Scatter(x=df.index, y=df['SMA_Long'], mode='lines', name=f'SMA Long ({sma_long})', line=dict(color='green', dash='dot')))
 
-    # Add the Buy and Sell signals
+    # Highlight Buy and Sell signals
     buy_signals = df[df['Signal'] == 1]
     sell_signals = df[df['Signal'] == -1]
 
-    fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals['Close'], mode='markers', name='Buy Signal', marker=dict(color='green', symbol='triangle-up')))
-    fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals['Close'], mode='markers', name='Sell Signal', marker=dict(color='red', symbol='triangle-down')))
+    fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals['Close'], mode='markers', name='Buy Signal', 
+                             marker=dict(color='green', size=12, symbol='triangle-up')))
+    fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals['Close'], mode='markers', name='Sell Signal', 
+                             marker=dict(color='red', size=12, symbol='triangle-down')))
 
     fig.update_layout(title=f'Trading Strategy for {ticker}', xaxis_title='Date', yaxis_title='Price', template='plotly_white')
 
