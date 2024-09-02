@@ -35,15 +35,15 @@ app.layout = dbc.Container([
                         style={'width': '100%'}
                     ),
                     dbc.Label("Short SMA Period:"),
-                    dcc.Input(id='sma-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='sma-short-input', type='number', value=7, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long SMA Period:"),
-                    dcc.Input(id='sma-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='sma-long-input', type='number', value=10, className="mb-3", style={'width': '100%'}),
                     dbc.Label("RSI Threshold:"),
                     dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=11, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=19, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=25, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
