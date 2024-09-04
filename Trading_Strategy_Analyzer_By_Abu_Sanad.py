@@ -26,8 +26,8 @@ app.layout = dbc.Container([
                         id='period-input',
                         options=[
                             {'label': '1 Year', 'value': '1y'},
-                            {'label': '2 Year', 'value': '2y'},
-                            {'label': '3 Year', 'value': '5y'},
+                            {'label': '2 Years', 'value': '2y'},
+                            {'label': '5 Years', 'value': '5y'},
                             {'label': 'All', 'value': 'max'}
                         ],
                         value='1y',
