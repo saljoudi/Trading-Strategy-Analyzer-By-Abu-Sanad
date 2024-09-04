@@ -27,7 +27,7 @@ app.layout = dbc.Container([
                         options=[
                             {'label': '1 Year', 'value': '1y'},
                             {'label': '2 Year', 'value': '2y'},
-                            {'label': '3 Year', 'value': '3y'},
+                            {'label': '3 Year', 'value': '36mo'},
                             {'label': 'All', 'value': 'max'}
                         ],
                         value='1y',
