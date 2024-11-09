@@ -7,7 +7,7 @@ import ta
 import plotly.graph_objs as go
 
 # Initialize the Dash app with a Bootstrap theme
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SOLAR])
 server = app.server  # Expose the Flask server
 
 app.layout = dbc.Container([
