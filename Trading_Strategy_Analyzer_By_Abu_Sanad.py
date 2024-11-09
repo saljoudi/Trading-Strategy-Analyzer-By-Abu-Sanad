@@ -1,3 +1,4 @@
+
 import dash
 from dash import dcc, html, Input, Output
 import dash_bootstrap_components as dbc
@@ -5,7 +6,6 @@ import pandas as pd
 import yfinance as yf
 import ta
 import plotly.graph_objs as go
-import numpy as np
 
 # Initialize the Dash app with a Bootstrap theme
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
@@ -42,9 +42,9 @@ app.layout = dbc.Container([
                     dbc.Label("RSI Threshold:"),
                     dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=19, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=25, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -105,9 +105,6 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     df = yf.download(ticker, period=period)
     df.index = pd.to_datetime(df.index)
 
-    if df.empty:
-        return {}, "No data available for the ticker.", ""
-
     # Calculate indicators
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
     df['SMA_Long'] = df['Close'].rolling(window=sma_long).mean()
@@ -125,34 +122,24 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         ), axis=1
     )
 
-    # Initialize trading simulation variables
-    initial_investment = 100000
-    portfolio_value = initial_investment
-    position = 0  # 0 for no position, 1 for holding shares
-    number_of_shares = 0
-    trades = []
-    trade_returns = []
-    number_of_trades = 0
-    df['Portfolio Value'] = initial_investment
-
     # Simulate trading
+    initial_investment = 100000
+    portfolio = initial_investment
+    trades = []
+    buy_price = None
+    trade_start = None
+    number_of_trades = 0
+
     for index, row in df.iterrows():
-        if row['Signal'] == 1 and position == 0:
-            # Buy signal
+        if row['Signal'] == 1 and buy_price is None:
             buy_price = row['Close']
-            number_of_shares = portfolio_value / buy_price
-            position = 1
             trade_start = index
             number_of_trades += 1
-        elif row['Signal'] == -1 and position == 1:
-            # Sell signal
+        elif row['Signal'] == -1 and buy_price is not None:
             sell_price = row['Close']
-            profit = number_of_shares * (sell_price - buy_price)
-            portfolio_value = number_of_shares * sell_price
+            profit = (sell_price - buy_price) * (portfolio / buy_price)
+            portfolio += profit
             days_held = (index - trade_start).days
-
-            profit_percentage = ((sell_price - buy_price) / buy_price) * 100
-            trade_returns.append((sell_price - buy_price) / buy_price)
 
             trades.append({
                 'Sell Date': index.date().strftime('%Y-%m-%d'),
@@ -160,57 +147,14 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
                 'Sell Price': f"{sell_price:.2f} SAR",
                 'Days Held': days_held,
                 'Profit': f"{profit:,.2f} SAR",
-                'Profit Percentage': f"{profit_percentage:.2f}%"
+                'Profit Percentage': f"{(profit / (portfolio - profit)) * 100:.2f}%"
             })
 
-            position = 0
-            number_of_shares = 0
-        # Update portfolio value
-        if position == 1:
-            portfolio_value = number_of_shares * row['Close']
-        # Record portfolio value
-        df.loc[index, 'Portfolio Value'] = portfolio_value
+            buy_price = None
 
-    # Handle the case where we still hold a position at the end
-    if position == 1:
-        sell_price = df.iloc[-1]['Close']
-        profit = number_of_shares * (sell_price - buy_price)
-        portfolio_value = number_of_shares * sell_price
-        days_held = (df.index[-1] - trade_start).days
-
-        profit_percentage = ((sell_price - buy_price) / buy_price) * 100
-        trade_returns.append((sell_price - buy_price) / buy_price)
-
-        trades.append({
-            'Sell Date': df.index[-1].date().strftime('%Y-%m-%d'),
-            'Buy Price': f"{buy_price:.2f} SAR",
-            'Sell Price': f"{sell_price:.2f} SAR",
-            'Days Held': days_held,
-            'Profit': f"{profit:,.2f} SAR",
-            'Profit Percentage': f"{profit_percentage:.2f}%"
-        })
-
-        position = 0
-        number_of_shares = 0
-
-    final_value = portfolio_value
+    final_value = portfolio
     total_return = final_value - initial_investment
     percentage_return = (total_return / initial_investment) * 100
-
-    # Calculate daily returns and Sharpe Ratio
-    df['Daily Return'] = df['Portfolio Value'].pct_change()
-    mean_daily_return = df['Daily Return'].mean()
-    std_daily_return = df['Daily Return'].std()
-    if std_daily_return != 0:
-        sharpe_ratio = (mean_daily_return / std_daily_return) * np.sqrt(252)
-    else:
-        sharpe_ratio = 0
-
-    # Calculate average trade return percentage
-    if trade_returns:
-        avg_trade_return_percentage = (np.mean(trade_returns)) * 100
-    else:
-        avg_trade_return_percentage = 0
 
     # Create the plot with enhanced visuals
     fig = go.Figure()
@@ -224,16 +168,14 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     buy_signals = df[df['Signal'] == 1]
     sell_signals = df[df['Signal'] == -1]
 
-    fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals['Close'], mode='markers', name='Buy Signal',
+    fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals['Close'], mode='markers', name='Buy Signal', 
                              marker=dict(color='green', size=12, symbol='triangle-up')))
-    fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals['Close'], mode='markers', name='Sell Signal',
+    fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals['Close'], mode='markers', name='Sell Signal', 
                              marker=dict(color='red', size=12, symbol='triangle-down')))
 
     fig.update_layout(title=f'Trading Strategy for {ticker}', xaxis_title='Date', yaxis_title='Price', template='plotly_white')
 
     # Prepare the summary text
-    average_days_held = sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0
-
     summary_text = (
         f"Ticker: {ticker}\n"
         f"Initial Investment: {initial_investment:,.2f} SAR\n"
@@ -241,9 +183,7 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         f"Total Return: {total_return:,.2f} SAR\n"
         f"Percentage Return: {percentage_return:.2f}%\n"
         f"Number of Trades: {number_of_trades}\n"
-        f"Average Days Held per Trade: {average_days_held:.2f} days\n"
-        f"Average Trade Return: {avg_trade_return_percentage:.2f}%\n"
-        f"Sharpe Ratio: {sharpe_ratio:.2f}"
+        f"Average Days Held per Trade: {sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0:.2f} days"
     )
 
     # Create the trades table
