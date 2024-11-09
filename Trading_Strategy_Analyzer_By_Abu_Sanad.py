@@ -25,7 +25,9 @@ app.layout = dbc.Container([
                     dcc.Dropdown(
                         id='period-input',
                         options=[
+                            {'label': '6 Months', 'value': '6mo'},
                             {'label': '1 Year', 'value': '1y'},
+                            {'label': '18 Months', 'value': '18mo'},
                             {'label': '2 Years', 'value': '2y'},
                             {'label': '5 Years', 'value': '5y'},
                             {'label': 'All', 'value': 'max'}
