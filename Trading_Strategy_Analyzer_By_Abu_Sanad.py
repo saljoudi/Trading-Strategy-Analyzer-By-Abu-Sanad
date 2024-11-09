@@ -103,14 +103,37 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     # Download the data for the ticker
     df = yf.download(ticker, period=period)
     df.index = pd.to_datetime(df.index)
+    df = df.query("Volume>0")
+
+    # Ensure 'Close' is a Series
+    if isinstance(df['Close'], pd.DataFrame):
+        df['Close'] = df['Close'].squeeze()
 
     # Calculate indicators
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
     df['SMA_Long'] = df['Close'].rolling(window=sma_long).mean()
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
-    df['MACD'] = ta.trend.MACD(df['Close']).macd()
-    df['MACD_Signal'] = ta.trend.MACD(df['Close']).macd_signal()
-    df['ADL'] = ta.volume.AccDistIndexIndicator(df['High'], df['Low'], df['Close'], df['Volume']).acc_dist_index()
+
+    # Calculate RSI and ensure it's 1-dimensional
+    rsi_indicator = ta.momentum.RSIIndicator(df['Close'], window=14)
+    df['RSI'] = rsi_indicator.rsi()
+    if df['RSI'].ndim > 1:
+        df['RSI'] = df['RSI'].squeeze()
+
+    # Calculate MACD and ensure outputs are 1-dimensional
+    macd_indicator = ta.trend.MACD(df['Close'])
+    df['MACD'] = macd_indicator.macd()
+    df['MACD_Signal'] = macd_indicator.macd_signal()
+    if df['MACD'].ndim > 1:
+        df['MACD'] = df['MACD'].squeeze()
+    if df['MACD_Signal'].ndim > 1:
+        df['MACD_Signal'] = df['MACD_Signal'].squeeze()
+
+    # Calculate ADL and ensure it's 1-dimensional
+    adl_indicator = ta.volume.AccDistIndexIndicator(df['High'], df['Low'], df['Close'], df['Volume'])
+    df['ADL'] = adl_indicator.acc_dist_index()
+    if df['ADL'].ndim > 1:
+        df['ADL'] = df['ADL'].squeeze()
+
     df['ADL_Short_SMA'] = df['ADL'].rolling(window=adl_short).mean()
     df['ADL_Long_SMA'] = df['ADL'].rolling(window=adl_long).mean()
 
@@ -167,14 +190,15 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     buy_signals = df[df['Signal'] == 1]
     sell_signals = df[df['Signal'] == -1]
 
-    fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals['Close'], mode='markers', name='Buy Signal', 
+    fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals['Close'], mode='markers', name='Buy Signal',
                              marker=dict(color='green', size=12, symbol='triangle-up')))
-    fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals['Close'], mode='markers', name='Sell Signal', 
+    fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals['Close'], mode='markers', name='Sell Signal',
                              marker=dict(color='red', size=12, symbol='triangle-down')))
 
     fig.update_layout(title=f'Trading Strategy for {ticker}', xaxis_title='Date', yaxis_title='Price', template='plotly_white')
 
     # Prepare the summary text
+    average_days_held = sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0
     summary_text = (
         f"Ticker: {ticker}\n"
         f"Initial Investment: {initial_investment:,.2f} SAR\n"
@@ -182,7 +206,7 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         f"Total Return: {total_return:,.2f} SAR\n"
         f"Percentage Return: {percentage_return:.2f}%\n"
         f"Number of Trades: {number_of_trades}\n"
-        f"Average Days Held per Trade: {sum([t['Days Held'] for t in trades]) / number_of_trades if number_of_trades > 0 else 0:.2f} days"
+        f"Average Days Held per Trade: {average_days_held:.2f} days"
     )
 
     # Create the trades table
