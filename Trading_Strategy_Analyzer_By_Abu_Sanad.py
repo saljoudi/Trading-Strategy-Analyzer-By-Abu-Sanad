@@ -1,3 +1,4 @@
+
 import dash
 from dash import dcc, html, Input, Output
 import dash_bootstrap_components as dbc
@@ -41,9 +42,9 @@ app.layout = dbc.Container([
                     dbc.Label("RSI Threshold:"),
                     dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=19, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=25, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
