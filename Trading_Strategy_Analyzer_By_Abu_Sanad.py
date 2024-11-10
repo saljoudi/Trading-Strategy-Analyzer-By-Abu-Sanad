@@ -1,18 +1,35 @@
-
 import dash
 from dash import dcc, html, Input, Output
 import dash_bootstrap_components as dbc
 import pandas as pd
 import yfinance as yf
-import ta
 import plotly.graph_objs as go
-
-from dash.dependencies import Input, Output, State
-
+import numpy as np
 
 # Initialize the Dash app with a Bootstrap theme
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
 server = app.server  # Expose the Flask server
+
+# Technical Indicators Implementation
+def calculate_rsi(data, periods=14):
+    delta = data.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=periods).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=periods).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+def calculate_macd(data, fast=12, slow=26, signal=9):
+    exp1 = data.ewm(span=fast, adjust=False).mean()
+    exp2 = data.ewm(span=slow, adjust=False).mean()
+    macd = exp1 - exp2
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    return macd, signal_line
+
+def calculate_adl(high, low, close, volume):
+    mfm = ((close - low) - (high - close)) / (high - low)
+    mfm = mfm.fillna(0)  # Handle division by zero
+    mfv = mfm * volume
+    return mfv.cumsum()
 
 app.layout = dbc.Container([
     dbc.Row([
@@ -29,7 +46,9 @@ app.layout = dbc.Container([
                     dcc.Dropdown(
                         id='period-input',
                         options=[
+#                             {'label': '6 Months', 'value': '6mo'},
                             {'label': '1 Year', 'value': '1y'},
+                            {'label': '18 Months', 'value': '18mo'},
                             {'label': '2 Years', 'value': '2y'},
                             {'label': '5 Years', 'value': '5y'},
                             {'label': 'All', 'value': 'max'}
@@ -45,9 +64,9 @@ app.layout = dbc.Container([
                     dbc.Label("RSI Threshold:"),
                     dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=19, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=25, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -83,7 +102,6 @@ app.layout = dbc.Container([
     ])
 ], fluid=True)
 
-
 @app.callback(
     [Output('trading-graph', 'figure'),
      Output('summary-output', 'children'),
@@ -108,13 +126,12 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     df = yf.download(ticker, period=period)
     df.index = pd.to_datetime(df.index)
 
-    # Calculate indicators
+    # Calculate indicators using our custom functions
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
     df['SMA_Long'] = df['Close'].rolling(window=sma_long).mean()
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
-    df['MACD'] = ta.trend.MACD(df['Close']).macd()
-    df['MACD_Signal'] = ta.trend.MACD(df['Close']).macd_signal()
-    df['ADL'] = ta.volume.AccDistIndexIndicator(df['High'], df['Low'], df['Close'], df['Volume']).acc_dist_index()
+    df['RSI'] = calculate_rsi(df['Close'])
+    df['MACD'], df['MACD_Signal'] = calculate_macd(df['Close'])
+    df['ADL'] = calculate_adl(df['High'], df['Low'], df['Close'], df['Volume'])
     df['ADL_Short_SMA'] = df['ADL'].rolling(window=adl_short).mean()
     df['ADL_Long_SMA'] = df['ADL'].rolling(window=adl_long).mean()
 
@@ -195,6 +212,5 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
 
     return fig, summary_text, trades_table
 
-
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
