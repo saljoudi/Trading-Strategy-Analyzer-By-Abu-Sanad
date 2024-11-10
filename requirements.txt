@@ -1,8 +1,8 @@
-dash==2.3.1
-dash-bootstrap-components==1.0.0
-pandas==1.3.5
-numpy==1.21.6
-yfinance==0.1.70
-ta==0.10.1
-plotly==5.5.0
-gunicorn==20.1.0
+dash 
+yfinance
+plotly
+pandas
+plotly
+ta 
+gunicorn
+dash_bootstrap_components 
