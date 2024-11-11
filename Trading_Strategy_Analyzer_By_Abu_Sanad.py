@@ -215,4 +215,4 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     return fig, summary_text, trades_table
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(host='0.0.0.0', port=8080, debug=False)
