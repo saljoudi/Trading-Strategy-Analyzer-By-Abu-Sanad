@@ -64,9 +64,9 @@ app.layout = dbc.Container([
                     dbc.Label("RSI Threshold:"),
                     dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=19, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=25, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -125,6 +125,8 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     # Download the data for the ticker
     df = yf.download(ticker, period=period)
     df.index = pd.to_datetime(df.index)
+    
+    df = df.query("Volume != 0") 
 
     # Calculate indicators using our custom functions
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
