@@ -41,9 +41,9 @@ app.layout = dbc.Container([
                     dbc.Label("RSI Threshold:"),
                     dcc.Input(id='rsi-threshold-input', type='number', value=40, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Short ADL SMA Period:"),
-                    dcc.Input(id='adl-short-input', type='number', value=19, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-short-input', type='number', value=17, className="mb-3", style={'width': '100%'}),
                     dbc.Label("Long ADL SMA Period:"),
-                    dcc.Input(id='adl-long-input', type='number', value=25, className="mb-3", style={'width': '100%'}),
+                    dcc.Input(id='adl-long-input', type='number', value=15, className="mb-3", style={'width': '100%'}),
                     dbc.Button("Analyze", id="analyze-button", color="primary", className="mt-3", style={'width': '100%'})
                 ])
             ])
@@ -104,7 +104,6 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     df = yf.download(ticker, period=period)
     df.index = pd.to_datetime(df.index)
 
-    
     # Calculate indicators
     df['SMA_Short'] = df['Close'].rolling(window=sma_short).mean()
     df['SMA_Long'] = df['Close'].rolling(window=sma_long).mean()
@@ -115,37 +114,17 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     df['ADL_Short_SMA'] = df['ADL'].rolling(window=adl_short).mean()
     df['ADL_Long_SMA'] = df['ADL'].rolling(window=adl_long).mean()
 
-#     # Signal generation
-#     df['Signal'] = df.apply(
-#         lambda row: -1 if row['Close'] >= row['SMA_Short'] and row['SMA_Short'] > row['SMA_Long'] and row['ADL_Short_SMA'] > row['ADL_Long_SMA'] and row['RSI'] >= rsi_threshold and row['MACD'] > row['MACD_Signal'] else (
-#             1 if row['Close'] < row['SMA_Short'] and row['SMA_Short'] < row['SMA_Long'] else 0
-#         ), axis=1
-#     )
-
-
-    def generate_signal(row, rsi_threshold):
-        # Buy Signal
-        if (
-            row['Close'] >= row['SMA_Short'] and
-            row['SMA_Short'] > row['SMA_Long'] and
-            row['ADL_Short_SMA'] > row['ADL_Long_SMA'] and
-            row['RSI'] >= rsi_threshold and
-            row['MACD'] > row['MACD_Signal']
-        ):
-            return -1  # Buy signal
-        # Sell Signal
-        elif (
-            row['Close'] < row['SMA_Short'] and
-            row['SMA_Short'] < row['SMA_Long']
-        ):
-            return 1  # Sell signal
-        # Hold
+    def generate_signal(row, sma_short, sma_long, rsi_threshold, adl_short, adl_long):
+        if row['Close'] >= row['SMA_Short'] and row['SMA_Short'] > row['SMA_Long'] and \
+           row['ADL_Short_SMA'] > row['ADL_Long_SMA'] and row['RSI'] >= rsi_threshold and \
+           row['MACD'] > row['MACD_Signal']:
+            return 1  # Buy signal
+        elif row['Close'] < row['SMA_Short'] and row['SMA_Short'] < row['SMA_Long']:
+            return -1  # Sell signal
         else:
-            return 0
-        
-    df['Signal'] = df.apply(lambda row: generate_signal(row, rsi_threshold), axis=1)
+            return 0  # Hold
 
-
+    df['Signal'] = df.apply(lambda row: generate_signal(row, sma_short, sma_long, rsi_threshold, adl_short, adl_long), axis=1)
 
     # Simulate trading
     initial_investment = 100000
@@ -156,11 +135,11 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
     number_of_trades = 0
 
     for index, row in df.iterrows():
-        if row['Signal'] == -1 and buy_price is None:
+        if row['Signal'] == 1 and buy_price is None:
             buy_price = row['Close']
             trade_start = index
-            number_of_trades += -1
-        elif row['Signal'] == 1 and buy_price is not None:
+            number_of_trades += 1
+        elif row['Signal'] == -1 and buy_price is not None:
             sell_price = row['Close']
             profit = (sell_price - buy_price) * (portfolio / buy_price)
             portfolio += profit
