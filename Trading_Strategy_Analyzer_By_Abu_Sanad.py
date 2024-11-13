@@ -118,9 +118,9 @@ def update_graph(n_clicks, ticker_input, period, sma_short, sma_long, rsi_thresh
         if row['Close'] >= row['SMA_Short'] and row['SMA_Short'] > row['SMA_Long'] and \
            row['ADL_Short_SMA'] > row['ADL_Long_SMA'] and row['RSI'] >= rsi_threshold and \
            row['MACD'] > row['MACD_Signal']:
-            return 1  # Buy signal
+            return -1  # Buy signal
         elif row['Close'] < row['SMA_Short'] and row['SMA_Short'] < row['SMA_Long']:
-            return -1  # Sell signal
+            return 1  # Sell signal
         else:
             return 0  # Hold
 
