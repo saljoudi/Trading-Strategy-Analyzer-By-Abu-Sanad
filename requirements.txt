@@ -6,6 +6,6 @@ pandas
 ta
 numpy
 plotly.graph_objs 
-dash_bootstrap_components as dbc
+dash_bootstrap_components 
 datetime
 warnings
