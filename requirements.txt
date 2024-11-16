@@ -1,6 +1,5 @@
 gunicorn
 dash
-dash.dependencies
 yfinance
 pandas
 ta
