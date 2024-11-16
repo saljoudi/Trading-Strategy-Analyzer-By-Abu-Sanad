@@ -4,7 +4,6 @@ yfinance
 pandas
 ta
 numpy
-plotly.graph_objs 
 dash_bootstrap_components 
 datetime
 warnings
