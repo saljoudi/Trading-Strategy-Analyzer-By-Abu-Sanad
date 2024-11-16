@@ -1,8 +1,11 @@
-dash 
-yfinance
-plotly
-pandas
-ta 
 gunicorn
-dash_bootstrap_components 
+dash
+dash.dependencies
+yfinance
+pandas
+ta
 numpy
+plotly.graph_objs 
+dash_bootstrap_components as dbc
+datetime
+warnings
