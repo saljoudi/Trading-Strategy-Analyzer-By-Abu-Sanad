@@ -15,6 +15,8 @@ warnings.filterwarnings("ignore")
 
 # Initialize the Dash app with a Bootstrap theme
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
+server = app.server  # Expose the Flask server
+
 
 app.layout = dbc.Container([
     dbc.Row([
