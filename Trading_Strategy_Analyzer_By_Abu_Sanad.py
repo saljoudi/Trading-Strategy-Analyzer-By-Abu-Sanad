@@ -9,6 +9,8 @@ import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
 from datetime import datetime
 import warnings
+from yahooquery import Ticker
+
 
 # Ignore warnings from ta library
 warnings.filterwarnings("ignore")
@@ -126,7 +128,10 @@ def update_output(n_clicks, stock_symbol, time_period, sma_short, sma_long, rsi_
         today = datetime.today()
         if time_period in ['1y', '2y', '3y', 'max']:
             # Use period parameter for these time periods
-            df = yf.download(stock_symbol, period=time_period)
+            # df = yf.download(stock_symbol, period=time_period)
+
+            ticker_obj = Ticker(stock_symbol)
+            df = ticker_obj.history(period=time_period).reset_index()
         elif time_period == '18mo':
             start_date = today - pd.DateOffset(months=18)
             df = yf.download(stock_symbol, start=start_date, end=today)
