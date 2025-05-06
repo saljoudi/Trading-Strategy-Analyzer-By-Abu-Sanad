@@ -1,216 +1,248 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
-import yfinance as yf
 import pandas as pd
 import ta
 import numpy as np
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 from yahooquery import Ticker
-
 
 # Ignore warnings from ta library
 warnings.filterwarnings("ignore")
 
-# Initialize the Dash app with a Bootstrap theme
+# ────────────────────────────────────────────────────────────────────────────────
+#  Dash App Initialization
+# ────────────────────────────────────────────────────────────────────────────────
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX])
-server = app.server  # Expose the Flask server
+server = app.server  # Expose Flask server for deployment platforms
 
-
+# ────────────────────────────────────────────────────────────────────────────────
+#  Layout
+# ────────────────────────────────────────────────────────────────────────────────
 app.layout = dbc.Container([
     dbc.Row([
-        dbc.Col(html.H1("Advanced Stock Analysis App", className="text-center text-primary mb-4"), width=12)
+        dbc.Col(html.H1("Advanced Stock Analysis App",
+                         className="text-center text-primary mb-4"), width=12)
     ], className="mt-4"),
+
     dbc.Row([
-        # Left column with input parameters
+        # ── Left column: input controls ────────────────────────────────────────
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Input Parameters"),
                 dbc.CardBody([
                     dbc.Form([
+                        # Stock symbol ------------------------------------------------
                         html.Div([
-                            dbc.Label("Stock Symbol:", html_for='stock-symbol'),
-                            dbc.Input(id='stock-symbol', type='text', value='1303', placeholder='Enter stock symbol', debounce=True),
+                            dbc.Label("Stock Symbol:", html_for="stock-symbol"),
+                            dbc.Input(id="stock-symbol", type="text", value="1303",
+                                      placeholder="Enter stock symbol", debounce=True),
                             dbc.FormText("Enter the stock ticker symbol (e.g., AAPL or 1303 for Saudi stocks)."),
                         ], className="mb-4"),
+
+                        # Time period --------------------------------------------------
                         html.Div([
-                            dbc.Label("Time Period:", html_for='time-period'),
+                            dbc.Label("Time Period:", html_for="time-period"),
                             dcc.Dropdown(
-                                id='time-period',
+                                id="time-period",
                                 options=[
-                                    {'label': '1 Year', 'value': '1y'},
-                                    {'label': '18 Months', 'value': '18mo'},
-                                    {'label': '2 Years', 'value': '2y'},
-                                    {'label': '30 Months', 'value': '30mo'},
-                                    {'label': '3 Years', 'value': '3y'},
-                                    {'label': 'Max', 'value': 'max'}
+                                    {"label": "1 Year", "value": "1y"},
+                                    {"label": "18 Months", "value": "18mo"},
+                                    {"label": "2 Years", "value": "2y"},
+                                    {"label": "30 Months", "value": "30mo"},
+                                    {"label": "3 Years", "value": "3y"},
+                                    {"label": "Max", "value": "max"}
                                 ],
-                                value='18mo',
-                                placeholder='Select time period'
+                                value="18mo",
+                                placeholder="Select time period"
                             ),
                         ], className="mb-4"),
+
+                        # SMA short ----------------------------------------------------
                         html.Div([
-                            dbc.Label("SMA Short:", html_for='sma-short'),
-                            dbc.Input(id='sma-short', type='number', value=7, min=1, placeholder='Short SMA period', debounce=True),
+                            dbc.Label("SMA Short:", html_for="sma-short"),
+                            dbc.Input(id="sma-short", type="number", value=7,
+                                      min=1, placeholder="Short SMA period", debounce=True),
                         ], className="mb-4"),
+
+                        # SMA long -----------------------------------------------------
                         html.Div([
-                            dbc.Label("SMA Long:", html_for='sma-long'),
-                            dbc.Input(id='sma-long', type='number', value=10, min=1, placeholder='Long SMA period', debounce=True),
+                            dbc.Label("SMA Long:", html_for="sma-long"),
+                            dbc.Input(id="sma-long", type="number", value=10,
+                                      min=1, placeholder="Long SMA period", debounce=True),
                         ], className="mb-4"),
+
+                        # RSI threshold -----------------------------------------------
                         html.Div([
-                            dbc.Label("RSI Threshold:", html_for='rsi-threshold'),
-                            dbc.Input(id='rsi-threshold', type='number', value=40, min=0, max=100, placeholder='RSI threshold', debounce=True),
+                            dbc.Label("RSI Threshold:", html_for="rsi-threshold"),
+                            dbc.Input(id="rsi-threshold", type="number", value=40,
+                                      min=0, max=100, placeholder="RSI threshold", debounce=True),
                         ], className="mb-4"),
+
+                        # ADL short ----------------------------------------------------
                         html.Div([
-                            dbc.Label("ADL Short:", html_for='adl-short'),
-                            dbc.Input(id='adl-short', type='number', value=13, min=1, placeholder='Short ADL SMA period', debounce=True),
+                            dbc.Label("ADL Short:", html_for="adl-short"),
+                            dbc.Input(id="adl-short", type="number", value=13,
+                                      min=1, placeholder="Short ADL SMA period", debounce=True),
                         ], className="mb-4"),
+
+                        # ADL long -----------------------------------------------------
                         html.Div([
-                            dbc.Label("ADL Long:", html_for='adl-long'),
-                            dbc.Input(id='adl-long', type='number', value=30, min=1, placeholder='Long ADL SMA period', debounce=True),
+                            dbc.Label("ADL Long:", html_for="adl-long"),
+                            dbc.Input(id="adl-long", type="number", value=30,
+                                      min=1, placeholder="Long ADL SMA period", debounce=True),
                         ], className="mb-4"),
-                        dbc.Button('Analyze Stock', id='submit-button', color='primary', className='w-100'),
+
+                        dbc.Button("Analyze Stock", id="submit-button", color="primary", className="w-100"),
                     ])
                 ])
             ], className="mb-5"),
-            dbc.Spinner(html.Div(id="loading-output")),  # Placeholder for loading spinner
+            dbc.Spinner(html.Div(id="loading-output")),
         ], width=3),
-        # Right column with outputs
+
+        # ── Right column: outputs ───────────────────────────────────────────────
         dbc.Col([
             dbc.Tabs([
                 dbc.Tab(label="Price Chart", tab_id="tab-price-chart", children=[
                     dbc.CardBody([
-                        dcc.Graph(id='stock-graph', style={'height': '70vh'})
+                        dcc.Graph(id="stock-graph", style={"height": "70vh"})
                     ])
                 ]),
                 dbc.Tab(label="Performance Metrics", tab_id="tab-metrics", children=[
                     dbc.CardBody([
-                        html.Div(id='performance-metrics', className="mt-3")
+                        html.Div(id="performance-metrics", className="mt-3")
                     ])
                 ]),
                 dbc.Tab(label="Trade Details", tab_id="tab-trades", children=[
                     dbc.CardBody([
-                        html.Div(id='trade-details', className="mt-3")
+                        html.Div(id="trade-details", className="mt-3")
                     ])
                 ]),
-            ], id='output-tabs', active_tab='tab-price-chart', className="mt-3"),
+            ], id="output-tabs", active_tab="tab-price-chart", className="mt-3"),
         ], width=9)
     ], className="mb-5")
 ], fluid=True)
 
-# Callback to update outputs
+# ────────────────────────────────────────────────────────────────────────────────
+#  Helper: fetch data via yahooquery
+# ────────────────────────────────────────────────────────────────────────────────
+
+def fetch_stock_data(symbol: str, period_code: str) -> pd.DataFrame:
+    """Download price history using yahooquery and standardize column names."""
+    today = datetime.today()
+
+    tq = Ticker(symbol)
+
+    # Direct "period" if supported -------------------------------------------------
+    if period_code in {"1y", "2y", "3y", "max"}:
+        df = tq.history(period=period_code)
+    else:
+        # Map special codes to start‑date offsets ----------------------------------
+        offsets = {
+            "18mo": today - timedelta(days=18 * 30),
+            "30mo": today - timedelta(days=30 * 30)
+        }
+        start_date = offsets.get(period_code, today - timedelta(days=18 * 30))
+        df = tq.history(start=start_date.strftime("%Y-%m-%d"), end=today.strftime("%Y-%m-%d"))
+
+    if df.empty:
+        return df
+
+    # yahooquery returns a MultiIndex (symbol, date) -------------------------------
+    df = df.reset_index()
+    if "symbol" in df.columns:
+        df = df.drop(columns=["symbol"])
+    df.set_index("date", inplace=True)
+    df.index = pd.to_datetime(df.index)
+
+    df.rename(columns={
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "adjclose": "Adj Close",
+        "volume": "Volume",
+    }, inplace=True)
+
+    return df
+
+# ────────────────────────────────────────────────────────────────────────────────
+#  Callbacks
+# ────────────────────────────────────────────────────────────────────────────────
+
 @app.callback(
-    [Output('stock-graph', 'figure'),
-     Output('performance-metrics', 'children'),
-     Output('trade-details', 'children'),
-     Output('loading-output', 'children')],
-    Input('submit-button', 'n_clicks'),
-    State('stock-symbol', 'value'),
-    State('time-period', 'value'),
-    State('sma-short', 'value'),
-    State('sma-long', 'value'),
-    State('rsi-threshold', 'value'),
-    State('adl-short', 'value'),
-    State('adl-long', 'value')
+    [Output("stock-graph", "figure"),
+     Output("performance-metrics", "children"),
+     Output("trade-details", "children"),
+     Output("loading-output", "children")],
+    Input("submit-button", "n_clicks"),
+    State("stock-symbol", "value"),
+    State("time-period", "value"),
+    State("sma-short", "value"),
+    State("sma-long", "value"),
+    State("rsi-threshold", "value"),
+    State("adl-short", "value"),
+    State("adl-long", "value")
 )
-def update_output(n_clicks, stock_symbol, time_period, sma_short, sma_long, rsi_threshold, adl_short, adl_long):
+def update_output(n_clicks, stock_symbol, time_period,
+                  sma_short, sma_long, rsi_threshold, adl_short, adl_long):
     if n_clicks is None:
         return dash.no_update, "", "", ""
+
     try:
-        # Append '.SR' if the stock symbol is numeric
+        # Append ".SR" to numeric symbols for Saudi exchange ------------------
         if stock_symbol.isdigit():
-            stock_symbol += '.SR'
+            stock_symbol += ".SR"
 
-        # Fetch the stock data based on the selected time period
-        today = datetime.today()
-        if time_period in ['1y', '2y', '3y', 'max']:
-            # Use period parameter for these time periods
-            # df = yf.download(stock_symbol, period=time_period)
+        # ── Fetch data ---------------------------------------------------------
+        df = fetch_stock_data(stock_symbol, time_period)
 
-            ticker_obj = Ticker(stock_symbol)
-            df = ticker_obj.history(period=time_period).reset_index()
-        elif time_period == '18mo':
-            start_date = today - pd.DateOffset(months=18)
-            df = yf.download(stock_symbol, start=start_date, end=today)
-        elif time_period == '30mo':
-            start_date = today - pd.DateOffset(months=30)
-            df = yf.download(stock_symbol, start=start_date, end=today)
-        else:
-            # Default to 18 months if time period is not recognized
-            start_date = today - pd.DateOffset(months=18)
-            df = yf.download(stock_symbol, start=start_date, end=today)
-
-        df.index = pd.to_datetime(df.index)
         if df.empty:
-            return dash.no_update, html.P("No data found for the provided stock symbol and time period.", className="text-danger"), "", ""
+            msg = html.P("No data found for the provided stock symbol and time period.",
+                          className="text-danger")
+            return dash.no_update, msg, "", ""
 
-        # Process the stock data
-        result = process_stock(df, stock_symbol, sma_short, sma_long, rsi_threshold, adl_short, adl_long)
-        df = result['df']
+        # ── Process data & strategy evaluation --------------------------------
+        result = process_stock(df.copy(), stock_symbol, sma_short, sma_long,
+                               rsi_threshold, adl_short, adl_long)
+        df = result["df"]
 
-        # Create the stock price graph with signals
+        # ── Build price chart --------------------------------------------------
         fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df.index, y=df["Close"],
+                                 mode="lines", name="Close Price",
+                                 line=dict(width=2)))
+        fig.add_trace(go.Scatter(x=df.index, y=df["SMA_Short"],
+                                 mode="lines", name=f"SMA Short ({sma_short})",
+                                 line=dict(dash="dash", width=1)))
+        fig.add_trace(go.Scatter(x=df.index, y=df["SMA_Long"],
+                                 mode="lines", name=f"SMA Long ({sma_long})",
+                                 line=dict(dash="dot", width=1)))
 
-        # Add traces
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df['Close'],
-            mode='lines', name='Close Price',
-            line=dict(color='blue', width=2)
-        ))
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df['SMA_Short'],
-            mode='lines', name=f'SMA Short ({sma_short})',
-            line=dict(color='orange', dash='dash', width=1)
-        ))
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df['SMA_Long'],
-            mode='lines', name=f'SMA Long ({sma_long})',
-            line=dict(color='green', dash='dot', width=1)
-        ))
+        # Signals --------------------------------------------------------------
+        buy_signals = df[df["Buy Signal"]]
+        sell_signals = df[df["Sell Signal"]]
+        fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals["Close"],
+                                 mode="markers", name="Buy Signal",
+                                 marker=dict(symbol="triangle-up", size=10)))
+        fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals["Close"],
+                                 mode="markers", name="Sell Signal",
+                                 marker=dict(symbol="triangle-down", size=10)))
 
-        # Add buy and sell signals
-        buy_signals = df[df['Buy Signal']]
-        sell_signals = df[df['Sell Signal']]
-        fig.add_trace(go.Scatter(
-            x=buy_signals.index, y=buy_signals['Close'],
-            mode='markers', name='Buy Signal',
-            marker=dict(symbol='triangle-up', color='green', size=10)
-        ))
-        fig.add_trace(go.Scatter(
-            x=sell_signals.index, y=sell_signals['Close'],
-            mode='markers', name='Sell Signal',
-            marker=dict(symbol='triangle-down', color='red', size=10)
-        ))
-
-        # Update layout for better spacing
         fig.update_layout(
-            title={
-                'text': 'Price with Buy and Sell Signals',
-                'y': 0.98,  # Adjusted to move the title higher
-                'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': dict(size=20)
-            },
-            xaxis_title='Date',
-            yaxis_title='Price',
-            template='plotly_white',
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="center",
-                x=0.5,
-                font=dict(size=12),
-                itemclick='toggleothers'
-            ),
-            margin=dict(l=40, r=40, t=120, b=40),  # Increased top margin
+            title={"text": "Price with Buy and Sell Signals", "y": 0.98,
+                   "x": 0.5, "xanchor": "center", "yanchor": "top"},
+            xaxis_title="Date", yaxis_title="Price", template="plotly_white",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                         xanchor="center", x=0.5),
+            margin=dict(l=40, r=40, t=120, b=40)
         )
 
-        # Prepare performance metrics
+        # ── Performance metrics -----------------------------------------------
+# Prepare performance metrics
         # Calculate average percentage profit from all trades
         if result['trades']:
             trades_df = pd.DataFrame(result['trades'])
