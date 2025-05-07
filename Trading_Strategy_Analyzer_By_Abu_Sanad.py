@@ -22,109 +22,110 @@ server = app.server  # Expose Flask server for deployment platforms
 # ────────────────────────────────────────────────────────────────────────────────
 #  Layout
 # ────────────────────────────────────────────────────────────────────────────────
-app.layout = dbc.Container([
-    dbc.Row([
-        dbc.Col(html.H1("Advanced Stock Analysis App",
-                         className="text-center text-primary mb-4"), width=12)
-    ], className="mt-4"),
+# ─────────────────────────────────────────────────────────────────────────────
+#  Refreshed “single‑card” layout
+# ─────────────────────────────────────────────────────────────────────────────
 
-    dbc.Row([
-        # ── Left column: input controls ────────────────────────────────────────
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Input Parameters"),
-                dbc.CardBody([
-                    dbc.Form([
-                        # Stock symbol ------------------------------------------------
-                        html.Div([
-                            dbc.Label("Stock Symbol:", html_for="stock-symbol"),
-                            dbc.Input(id="stock-symbol", type="text", value="1303",
-                                      placeholder="Enter stock symbol", debounce=True),
-                            dbc.FormText("Enter the stock ticker symbol (e.g., AAPL or 1303 for Saudi stocks)."),
-                        ], className="mb-4"),
 
-                        # Time period --------------------------------------------------
-                        html.Div([
-                            dbc.Label("Time Period:", html_for="time-period"),
-                            dcc.Dropdown(
-                                id="time-period",
-                                options=[
-                                    {"label": "1 Year", "value": "1y"},
-                                    {"label": "18 Months", "value": "18mo"},
-                                    {"label": "2 Years", "value": "2y"},
-                                    {"label": "30 Months", "value": "30mo"},
-                                    {"label": "3 Years", "value": "3y"},
-                                    {"label": "Max", "value": "max"}
-                                ],
-                                value="18mo",
-                                placeholder="Select time period"
-                            ),
-                        ], className="mb-4"),
+# ─────────────────────────────────────────────────────────────────────────────
+#  Refreshed “single‑card” layout  (spinner fixed)
+# ─────────────────────────────────────────────────────────────────────────────
+app.layout = dbc.Container(fluid=True, children=[
 
-                        # SMA short ----------------------------------------------------
-                        html.Div([
-                            dbc.Label("SMA Short:", html_for="sma-short"),
-                            dbc.Input(id="sma-short", type="number", value=7,
-                                      min=1, placeholder="Short SMA period", debounce=True),
-                        ], className="mb-4"),
+    # ── Title row ────────────────────────────────────────────────────────────
+    dbc.Row(
+        dbc.Col(
+            html.H1("Advanced Stock Analysis App",
+                    className="text-center mt-4 mb-3 text-primary"),
+            width=12)
+    ),
 
-                        # SMA long -----------------------------------------------------
-                        html.Div([
-                            dbc.Label("SMA Long:", html_for="sma-long"),
-                            dbc.Input(id="sma-long", type="number", value=10,
-                                      min=1, placeholder="Long SMA period", debounce=True),
-                        ], className="mb-4"),
+    # ── Main card holding sidebar + content ──────────────────────────────────
+    dbc.Card(className="shadow-sm mb-4", children=[
+        dbc.CardBody([
+            dbc.Row([
 
-                        # RSI threshold -----------------------------------------------
-                        html.Div([
-                            dbc.Label("RSI Threshold:", html_for="rsi-threshold"),
-                            dbc.Input(id="rsi-threshold", type="number", value=40,
-                                      min=0, max=100, placeholder="RSI threshold", debounce=True),
-                        ], className="mb-4"),
+                # ░░ Sidebar ░░──────────────────────────────────────────────
+                dbc.Col(width=3, children=[
+                    html.H4("Inputs", className="mb-3"),
 
-                        # ADL short ----------------------------------------------------
-                        html.Div([
-                            dbc.Label("ADL Short:", html_for="adl-short"),
-                            dbc.Input(id="adl-short", type="number", value=13,
-                                      min=1, placeholder="Short ADL SMA period", debounce=True),
-                        ], className="mb-4"),
+                    dbc.Label("Ticker (no .SR for Saudi):"),
+                    dbc.Input(id="stock-symbol", type="text", value="1303",
+                              placeholder="e.g. AAPL or 1303", debounce=True,
+                              className="mb-3"),
 
-                        # ADL long -----------------------------------------------------
-                        html.Div([
-                            dbc.Label("ADL Long:", html_for="adl-long"),
-                            dbc.Input(id="adl-long", type="number", value=30,
-                                      min=1, placeholder="Long ADL SMA period", debounce=True),
-                        ], className="mb-4"),
+                    dbc.Label("Time Period:"),
+                    dcc.Dropdown(
+                        id="time-period",
+                        options=[
+                            {"label": "1 Year",  "value": "1y"},
+                            {"label": "18 Months", "value": "18mo"},
+                            {"label": "2 Years", "value": "2y"},
+                            {"label": "30 Months", "value": "30mo"},
+                            {"label": "3 Years", "value": "3y"},
+                            {"label": "Max",    "value": "max"}
+                        ],
+                        value="18mo",
+                        className="mb-3"
+                    ),
 
-                        dbc.Button("Analyze Stock", id="submit-button", color="primary", className="w-100"),
+                    dbc.Label("SMA Short:"),
+                    dbc.Input(id="sma-short", type="number", value=7,
+                              min=1, debounce=True, className="mb-3"),
+
+                    dbc.Label("SMA Long:"),
+                    dbc.Input(id="sma-long", type="number", value=10,
+                              min=1, debounce=True, className="mb-3"),
+
+                    dbc.Label("RSI Threshold:"),
+                    dbc.Input(id="rsi-threshold", type="number", value=40,
+                              min=0, max=100, debounce=True, className="mb-3"),
+
+                    dbc.Label("ADL Short:"),
+                    dbc.Input(id="adl-short", type="number", value=13,
+                              min=1, debounce=True, className="mb-3"),
+
+                    dbc.Label("ADL Long:"),
+                    dbc.Input(id="adl-long", type="number", value=30,
+                              min=1, debounce=True, className="mb-4"),
+
+                    dbc.Button("Analyze Stock", id="submit-button",
+                               color="primary", className="w-100"),
+
+                    # Fixed spinner (use spinnerClassName instead of className)
+                    dbc.Spinner(
+                        html.Div(id="loading-output"),
+                        size="sm",
+                        color="primary",
+                        spinnerClassName="mt-3"   # margin‑top
+                    ),
+                ]),
+
+                # ░░ Content ░░─────────────────────────────────────────────
+                dbc.Col(width=9, children=[
+                    dbc.Tabs(id="output-tabs", active_tab="tab-price-chart",
+                             className="mb-3", children=[
+
+                        dbc.Tab(label="Price Chart",
+                                tab_id="tab-price-chart",
+                                children=dcc.Graph(id="stock-graph",
+                                                   style={"height": "70vh"})),
+
+                        dbc.Tab(label="Performance Metrics",
+                                tab_id="tab-metrics",
+                                children=html.Div(id="performance-metrics",
+                                                  className="p-3")),
+
+                        dbc.Tab(label="Trade Details",
+                                tab_id="tab-trades",
+                                children=html.Div(id="trade-details",
+                                                  className="p-3")),
                     ])
                 ])
-            ], className="mb-5"),
-            dbc.Spinner(html.Div(id="loading-output")),
-        ], width=3),
-
-        # ── Right column: outputs ───────────────────────────────────────────────
-        dbc.Col([
-            dbc.Tabs([
-                dbc.Tab(label="Price Chart", tab_id="tab-price-chart", children=[
-                    dbc.CardBody([
-                        dcc.Graph(id="stock-graph", style={"height": "70vh"})
-                    ])
-                ]),
-                dbc.Tab(label="Performance Metrics", tab_id="tab-metrics", children=[
-                    dbc.CardBody([
-                        html.Div(id="performance-metrics", className="mt-3")
-                    ])
-                ]),
-                dbc.Tab(label="Trade Details", tab_id="tab-trades", children=[
-                    dbc.CardBody([
-                        html.Div(id="trade-details", className="mt-3")
-                    ])
-                ]),
-            ], id="output-tabs", active_tab="tab-price-chart", className="mt-3"),
-        ], width=9)
-    ], className="mb-5")
-], fluid=True)
+            ])
+        ])
+    ])
+])
 
 # ────────────────────────────────────────────────────────────────────────────────
 #  Helper: fetch data via yahooquery
@@ -209,28 +210,54 @@ def update_output(n_clicks, stock_symbol, time_period,
         result = process_stock(df.copy(), stock_symbol, sma_short, sma_long,
                                rsi_threshold, adl_short, adl_long)
         df = result["df"]
-
-        # ── Build price chart --------------------------------------------------
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df.index, y=df["Close"],
-                                 mode="lines", name="Close Price",
-                                 line=dict(width=2)))
-        fig.add_trace(go.Scatter(x=df.index, y=df["SMA_Short"],
-                                 mode="lines", name=f"SMA Short ({sma_short})",
-                                 line=dict(dash="dash", width=1)))
-        fig.add_trace(go.Scatter(x=df.index, y=df["SMA_Long"],
-                                 mode="lines", name=f"SMA Long ({sma_long})",
-                                 line=dict(dash="dot", width=1)))
-
-        # Signals --------------------------------------------------------------
-        buy_signals = df[df["Buy Signal"]]
+        buy_signals  = df[df["Buy Signal"]]
         sell_signals = df[df["Sell Signal"]]
-        fig.add_trace(go.Scatter(x=buy_signals.index, y=buy_signals["Close"],
-                                 mode="markers", name="Buy Signal",
-                                 marker=dict(symbol="triangle-up", size=10)))
-        fig.add_trace(go.Scatter(x=sell_signals.index, y=sell_signals["Close"],
-                                 mode="markers", name="Sell Signal",
-                                 marker=dict(symbol="triangle-down", size=10)))
+        fig = go.Figure()
+
+        # 1) Close price  – solid blue
+        fig.add_trace(
+            go.Scatter(
+                x=df.index, y=df["Close"],
+                mode="lines", name="Close Price",
+                line=dict(color="blue", width=2)
+            )
+        )
+
+        # 2) SMA‑Short  – dashed yellow
+        fig.add_trace(
+            go.Scatter(
+                x=df.index, y=df["SMA_Short"],
+                mode="lines", name=f"SMA Short ({sma_short})",
+                line=dict(color="yellow", dash="dash", width=1.5)
+            )
+        )
+
+        # 3) SMA‑Long  – dotted green
+        fig.add_trace(
+            go.Scatter(
+                x=df.index, y=df["SMA_Long"],
+                mode="lines", name=f"SMA Long ({sma_long})",
+                line=dict(color="green", dash="dot", width=1.5)
+            )
+        )
+
+        # 4) Buy signals  – green triangles pointing up
+        fig.add_trace(
+            go.Scatter(
+                x=buy_signals.index, y=buy_signals["Close"],
+                mode="markers", name="Buy Signal",
+                marker=dict(symbol="triangle-up", size=10, color="green")
+            )
+        )
+
+        # 5) Sell signals  – red triangles pointing down
+        fig.add_trace(
+            go.Scatter(
+                x=sell_signals.index, y=sell_signals["Close"],
+                mode="markers", name="Sell Signal",
+                marker=dict(symbol="triangle-down", size=10, color="red")
+            )
+        )
 
         fig.update_layout(
             title={"text": "Price with Buy and Sell Signals", "y": 0.98,
@@ -402,3 +429,4 @@ def process_stock(df, stock_symbol, sma_short, sma_long, rsi_threshold, adl_shor
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+    
